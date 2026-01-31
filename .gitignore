@@ -1,0 +1,6 @@
+.shareport/
+shareport
+shareport.db
+config.json
+runtime.log
+xray.pid

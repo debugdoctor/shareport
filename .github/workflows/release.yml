@@ -1,0 +1,102 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Draft release notes
+        id: drafter
+        uses: release-drafter/release-drafter@v6
+        with:
+          config-name: release-drafter.yml
+          tag: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          publish: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Write release notes file
+        id: notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          notes_path="${RUNNER_TEMP}/release-notes.md"
+          cat > "${notes_path}" <<'EOF'
+          ${{ steps.drafter.outputs.body }}
+          EOF
+          echo "path=${notes_path}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build
+        shell: bash
+        env:
+          CGO_ENABLED: "0"
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          set -euo pipefail
+
+          version="${GITHUB_REF_NAME}"
+          out_dir="dist"
+          mkdir -p "${out_dir}"
+
+          exe=""
+          if [[ "${GOOS}" == "windows" ]]; then
+            exe=".exe"
+          fi
+
+          asset_base="shareport_${version}_${GOOS}_${GOARCH}"
+          asset_bin="${asset_base}${exe}"
+
+          go build -trimpath -ldflags "-s -w" -o "${out_dir}/${asset_bin}" .
+
+          if [[ "${GOOS}" != "windows" ]]; then
+            chmod +x "${out_dir}/${asset_bin}"
+          fi
+
+          sha256sum "${out_dir}/${asset_bin}" > "${out_dir}/${asset_bin}.sha256"
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          body_path: ${{ steps.notes.outputs.path }}
+          files: |
+            dist/shareport_*
