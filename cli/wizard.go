@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"aimerick.com/shareport/acme"
+	"aimerick.com/shareport/components"
 	"aimerick.com/shareport/config"
 	"aimerick.com/shareport/core"
 	"aimerick.com/shareport/i18n"
@@ -107,7 +107,7 @@ func promptInbound(term *ui.TUI, msgs i18n.Messages, dbPath string) (core.Inboun
 				for {
 					provider = strings.TrimSpace(term.Prompt(msgs.Get("prompt_tls_dns_provider"), ""))
 					if provider == "?" {
-						acme.PrintDNSProviderList(term)
+						components.PrintDNSProviderList(term)
 						continue
 					}
 					if provider != "" && provider != "manual" {
@@ -127,7 +127,7 @@ func promptInbound(term *ui.TUI, msgs i18n.Messages, dbPath string) (core.Inboun
 				})
 			}
 			term.Println(msgs.Get("tls_auto_start"))
-			certPath, keyPath, err := acme.EnsureCertificate(term, msgs, domain, email, challenge, provider)
+			certPath, keyPath, err := components.EnsureCertificate(term, msgs, domain, email, challenge, provider)
 			if err != nil {
 				return core.InboundSelection{}, err
 			}

@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
-	"strconv"
 	"strings"
 )
 
@@ -14,56 +13,49 @@ type LinkTrafficMeta struct {
 	ResetTime  string // HH:MM
 }
 
-const (
-	linkTrafficLimitKeyPrefix     = "link_traffic_limit_bytes"
-	linkTrafficResetDayKeyPrefix  = "link_traffic_reset_day"
-	linkTrafficResetTimeKeyPrefix = "link_traffic_reset_time"
-)
-
-func linkTrafficKey(prefix, link string) string {
+func linkTrafficHash(link string) string {
 	link = strings.TrimSpace(link)
 	sum := sha256.Sum256([]byte(link))
-	return prefix + ":" + hex.EncodeToString(sum[:])
+	return hex.EncodeToString(sum[:])
 }
 
 func GetLinkTrafficMeta(db *sql.DB, link string) (LinkTrafficMeta, bool, error) {
-	limitStr, ok, err := GetSetting(db, linkTrafficKey(linkTrafficLimitKeyPrefix, link))
+	if err := EnsureSchema(db); err != nil {
+		return LinkTrafficMeta{}, false, err
+	}
+	var (
+		limit     int64
+		resetDay  int
+		resetTime string
+	)
+	err := db.QueryRow(
+		`SELECT limit_bytes, reset_day, reset_time FROM link_attrs WHERE link_hash = ?`,
+		linkTrafficHash(link),
+	).Scan(&limit, &resetDay, &resetTime)
+	if err == sql.ErrNoRows {
+		return LinkTrafficMeta{}, false, nil
+	}
 	if err != nil {
 		return LinkTrafficMeta{}, false, err
 	}
-	if !ok || strings.TrimSpace(limitStr) == "" {
+	if limit <= 0 {
 		return LinkTrafficMeta{}, false, nil
 	}
-	limit, err := strconv.ParseInt(strings.TrimSpace(limitStr), 10, 64)
-	if err != nil || limit <= 0 {
-		return LinkTrafficMeta{}, false, nil
+	if resetDay < 1 || resetDay > 31 {
+		resetDay = 1
 	}
-
-	resetDay := 1
-	if dayStr, ok, err := GetSetting(db, linkTrafficKey(linkTrafficResetDayKeyPrefix, link)); err != nil {
-		return LinkTrafficMeta{}, true, err
-	} else if ok {
-		if n, err := strconv.Atoi(strings.TrimSpace(dayStr)); err == nil && n >= 1 && n <= 31 {
-			resetDay = n
-		}
+	if strings.TrimSpace(resetTime) == "" {
+		resetTime = "00:00"
 	}
-
-	resetTime := "00:00"
-	if timeStr, ok, err := GetSetting(db, linkTrafficKey(linkTrafficResetTimeKeyPrefix, link)); err != nil {
-		return LinkTrafficMeta{}, true, err
-	} else if ok && strings.TrimSpace(timeStr) != "" {
-		resetTime = strings.TrimSpace(timeStr)
-	}
-
-	return LinkTrafficMeta{LimitBytes: limit, ResetDay: resetDay, ResetTime: resetTime}, true, nil
+	return LinkTrafficMeta{LimitBytes: limit, ResetDay: resetDay, ResetTime: strings.TrimSpace(resetTime)}, true, nil
 }
 
 func SetLinkTrafficMeta(db *sql.DB, link string, meta LinkTrafficMeta) error {
+	if err := EnsureSchema(db); err != nil {
+		return err
+	}
 	if meta.LimitBytes <= 0 {
 		return ClearLinkTrafficMeta(db, link)
-	}
-	if err := SetSetting(db, linkTrafficKey(linkTrafficLimitKeyPrefix, link), strconv.FormatInt(meta.LimitBytes, 10)); err != nil {
-		return err
 	}
 	if meta.ResetDay < 1 || meta.ResetDay > 31 {
 		meta.ResetDay = 1
@@ -71,15 +63,24 @@ func SetLinkTrafficMeta(db *sql.DB, link string, meta LinkTrafficMeta) error {
 	if strings.TrimSpace(meta.ResetTime) == "" {
 		meta.ResetTime = "00:00"
 	}
-	if err := SetSetting(db, linkTrafficKey(linkTrafficResetDayKeyPrefix, link), strconv.Itoa(meta.ResetDay)); err != nil {
-		return err
-	}
-	return SetSetting(db, linkTrafficKey(linkTrafficResetTimeKeyPrefix, link), strings.TrimSpace(meta.ResetTime))
+	meta.ResetTime = strings.TrimSpace(meta.ResetTime)
+
+	_, err := db.Exec(
+		`INSERT INTO link_attrs(link_hash, limit_bytes, reset_day, reset_time)
+		 VALUES(?, ?, ?, ?)
+		 ON CONFLICT(link_hash) DO UPDATE SET limit_bytes=excluded.limit_bytes, reset_day=excluded.reset_day, reset_time=excluded.reset_time`,
+		linkTrafficHash(link),
+		meta.LimitBytes,
+		meta.ResetDay,
+		meta.ResetTime,
+	)
+	return err
 }
 
 func ClearLinkTrafficMeta(db *sql.DB, link string) error {
-	_ = DeleteSetting(db, linkTrafficKey(linkTrafficLimitKeyPrefix, link))
-	_ = DeleteSetting(db, linkTrafficKey(linkTrafficResetDayKeyPrefix, link))
-	_ = DeleteSetting(db, linkTrafficKey(linkTrafficResetTimeKeyPrefix, link))
-	return nil
+	if err := EnsureSchema(db); err != nil {
+		return err
+	}
+	_, err := db.Exec(`DELETE FROM link_attrs WHERE link_hash = ?`, linkTrafficHash(link))
+	return err
 }

@@ -7,7 +7,7 @@
 - `main.go`：程序入口；解析参数；在普通交互模式与 `--balancer-daemon` 后台守护模式之间切换。
 - `cli/`：交互式 TUI 菜单、初始化向导、运行管理（启动/停止代理、启动/停止定时切换）。
 - `config/`：SQLite 配置与运行态存储（pools/links/settings/runtime_state）。
-- `lb/`：调度池（round_robin/random/least_conn）与 `Pool.Next()` 的索引选择逻辑。
+- `components/`：ACME 证书、链接解析、调度池（round_robin/random/least_conn）与元数据。
 - `core/`：将后端链接（vless/vmess/trojan）解析为代理 `outbounds`，并生成包含 API + routing 的代理配置 JSON。
 - `runtime/`：运行时进程管理（代理 PID、balancer daemon PID）、以及通过代理 API 覆盖 balancer 出站的实现。
 - `.shareport/`：默认运行目录（DB、生成的代理配置、日志等）。
@@ -61,13 +61,13 @@
 
 封装位置：`runtime/balancer.go`
 
-- `ProxyAPIAddr = 127.0.0.1:10085`
-- `ProxyBalancerTag = balancer-0`
+- `XrayAPIAddr = 127.0.0.1:10085`
+- `XrayBalancerTag = balancer-0`
 - `DefaultOutboundTag = node-1`
-- `SetProxyBalancerOverrideWithRetry(...)`：对 `bo` 做短时间重试（应对 API 刚启动时不可用）。
+- `SetXrayBalancerOverrideWithRetry(...)`：对 `bo` 做短时间重试（应对 API 刚启动时不可用）。
 - `EnsureDefaultOutbound(...)`：在“未启动定时切换”场景下，强制把 `balancer-0` 指向 `node-1`。
 
-### 4.2 默认行为（定时切换未启动 → 默认 node-1）
+### 4.2 默认行为（定时切换未启动时使用 node-1）
 
 为了避免代理自己的 `strategy: roundRobin` 在未启用定时切换时仍然分流：
 
@@ -103,19 +103,18 @@ TUI 菜单入口：运行管理 → 均衡器管理（`cli/balancer.go`）。
 
 1. 启动时写入 `runtime_state`：`balancer_daemon_pid` / `balancer_daemon_running`。
 2. 从 DB 加载 config，构建 pools，并选择默认 pool。
-3. 立即执行一次切换（让“启动定时切换”有立刻可见的效果）。
-4. `time.NewTicker(time.Minute)`：每分钟 tick 一次，执行：
-   - `idx := pool.Next()` 计算本次选择的 link 索引
-   - `outboundTag := "node-" + (idx+1)`
-   - 调用 `xray api bo` 覆盖 `balancer-0` 当前出站
-5. 接收到 SIGTERM/SIGINT 退出时清理 runtime_state。
+3. 从 DB 加载切换策略（off/interval/per_connection，interval 支持 fixed/random）。
+4. 立即执行一次切换（让“启动定时切换”有立刻可见的效果）。
+5. interval 模式：使用 `time.Timer` 触发下一次切换，间隔由 fixed/random 决定。
+6. per_connection 模式：tail 代理访问日志（`runtime.log`），检测新连接事件后触发切换。
+7. 监听 SIGHUP 重新加载配置与切换策略；SIGTERM/SIGINT 退出时清理 runtime_state。
 
 注意：代理日志里 `[inbound-0 -> node-X]` 只会对"新建连接"体现；已存在的长连接不会突然跳转。
 ## 6. 日志
 
 ### 6.1 代理日志
 
-代理启动时不再打印到终端，改为写入：
+代理日志写入：
 
 - `.shareport/runtime.log`（或跟随 `--db` 的目录：`<dbDir>/runtime.log`）
 

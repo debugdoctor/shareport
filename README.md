@@ -109,15 +109,15 @@ A pool contains backend proxy links with a scheduling policy:
   "pools": [
     {
       "name": "pool1",
-	      "policy": "round_robin",
-	      "links": [
-	        "vless://..."
-	        "vmess://..."
-	        "trojan://..."
-	      ]
-	    }
-	  ]
-	}
+      "policy": "round_robin",
+      "links": [
+        "vless://...",
+        "vmess://...",
+        "trojan://..."
+      ]
+    }
+  ]
+}
 ```
 
 ### Supported Policies
@@ -152,7 +152,7 @@ The balancer supports multiple switching strategies:
 | Off | Default to node-1 (no switching) |
 | Interval (Fixed) | Switch at fixed time intervals (10-1800 seconds) |
 | Interval (Random) | Switch at random intervals within a range |
-| Per Connection | Trigger switching on each new connection |
+| Per Connection | Trigger switching on each new connection (based on proxy access logs) |
 
 ## Certificate Management
 
@@ -174,13 +174,10 @@ Use the "Renew Certificates" option in the main menu to renew expired certificat
 ```
 shareport/
 ├── main.go              # Entry point and CLI flag parsing
-├── acme/                # ACME certificate management
 ├── cli/                 # TUI interface and wizards
+├── components/          # ACME, link parsing, pool logic, metadata
 ├── config/              # Configuration and database handling
 ├── i18n/                # Internationalization
-├── lb/                  # Load balancer pool logic
-├── links/               # Link parsing (vless/vmess/trojan)
-├── meta/                # Metadata storage
 ├── runtime/             # Runtime process management
 ├── ui/                  # TUI utilities
 └── core/                # Proxy config generation

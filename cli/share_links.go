@@ -7,10 +7,10 @@ import (
 	"os"
 	"strings"
 
+	"aimerick.com/shareport/components"
 	"aimerick.com/shareport/config"
 	"aimerick.com/shareport/core"
 	"aimerick.com/shareport/i18n"
-	"aimerick.com/shareport/meta"
 	"aimerick.com/shareport/ui"
 )
 
@@ -120,7 +120,7 @@ func buildShareLinkFromXray(term *ui.TUI, msgs i18n.Messages, xrayConfigPath str
 	}
 
 	defaultHost := sni
-	if cached, err := meta.LoadMeta(); err == nil && strings.TrimSpace(cached.PublicHost) != "" {
+	if cached, err := components.LoadMeta(); err == nil && strings.TrimSpace(cached.PublicHost) != "" {
 		// Prefer cached value; share link generation should not re-prompt on every view.
 		defaultHost = strings.TrimSpace(cached.PublicHost)
 	} else {

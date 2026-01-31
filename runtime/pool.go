@@ -1,11 +1,11 @@
 package runtime
 
 import (
+	"aimerick.com/shareport/components"
 	"aimerick.com/shareport/config"
-	"aimerick.com/shareport/lb"
 )
 
-func PickPool(cfg config.Config, pools map[string]*lb.Pool, name string) *lb.Pool {
+func PickPool(cfg config.Config, pools map[string]*components.Pool, name string) *components.Pool {
 	if name == "" {
 		name = cfg.DefaultPool
 	}

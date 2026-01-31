@@ -7,10 +7,9 @@ import (
 	"strconv"
 	"strings"
 
+	"aimerick.com/shareport/components"
 	"aimerick.com/shareport/config"
 	"aimerick.com/shareport/i18n"
-	"aimerick.com/shareport/links"
-	"aimerick.com/shareport/meta"
 	"aimerick.com/shareport/ui"
 )
 
@@ -65,7 +64,7 @@ func collectLinks(term *ui.TUI, msgs i18n.Messages, db *sql.DB) ([]string, error
 			}
 		}
 
-		if _, err := links.Parse(strings.TrimSpace(input)); err != nil {
+		if _, err := components.Parse(strings.TrimSpace(input)); err != nil {
 			term.Println(fmt.Sprintf("%s: %v", msgs.Get("invalid_link"), err))
 			continue
 		}
@@ -154,7 +153,7 @@ func selectPolicy(term *ui.TUI, msgs i18n.Messages) string {
 
 func promptAndSavePublicHost(term *ui.TUI, msgs i18n.Messages, fallback string) (string, error) {
 	current := ""
-	if cached, err := meta.LoadMeta(); err == nil {
+	if cached, err := components.LoadMeta(); err == nil {
 		current = strings.TrimSpace(cached.PublicHost)
 	}
 	def := strings.TrimSpace(current)
@@ -162,13 +161,13 @@ func promptAndSavePublicHost(term *ui.TUI, msgs i18n.Messages, fallback string) 
 		def = strings.TrimSpace(fallback)
 	}
 	if def == "" {
-		def = meta.DetectPublicHost()
+		def = components.DetectPublicHost()
 	}
 	host := strings.TrimSpace(term.Prompt(msgs.Get("prompt_public_host"), def))
 	if host == "" {
 		return "", fmt.Errorf("%s", msgs.Get("public_host_required"))
 	}
-	if err := meta.SaveMeta(meta.ShareportMeta{PublicHost: host}); err != nil {
+	if err := components.SaveMeta(components.ShareportMeta{PublicHost: host}); err != nil {
 		return "", err
 	}
 	return host, nil

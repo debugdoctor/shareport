@@ -17,8 +17,8 @@ import (
 	"syscall"
 	"time"
 
+	"aimerick.com/shareport/components"
 	"aimerick.com/shareport/config"
-	"aimerick.com/shareport/lb"
 )
 
 const (
@@ -133,7 +133,7 @@ func RunBalancerDaemon(dbPath, xrayBin string) error {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	eventCh := make(chan struct{}, 128)
 
-	var pool *lb.Pool
+	var pool *components.Pool
 	var switchCfg BalancerSwitchConfig
 
 	var timer *time.Timer
@@ -256,7 +256,7 @@ func RunBalancerDaemon(dbPath, xrayBin string) error {
 		if err != nil {
 			return err
 		}
-		nextPools, err := lb.BuildPools(nextCfg)
+		nextPools, err := components.BuildPools(nextCfg)
 		if err != nil {
 			return err
 		}

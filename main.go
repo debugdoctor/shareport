@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"aimerick.com/shareport/cli"
+	"aimerick.com/shareport/components"
 	"aimerick.com/shareport/i18n"
-	"aimerick.com/shareport/lb"
 	"aimerick.com/shareport/runtime"
 	"aimerick.com/shareport/ui"
 )
@@ -22,8 +22,8 @@ func main() {
 		balancerD   bool
 		dbPath      string
 		initWizard  bool
-		proxyConfig  string
-		proxyBin     string
+		proxyConfig string
+		proxyBin    string
 		lang        string
 	)
 
@@ -85,7 +85,7 @@ func main() {
 		}
 	}
 
-	pools, err := lb.BuildPools(cfg)
+	pools, err := components.BuildPools(cfg)
 	if err != nil {
 		log.Fatalf("%s: %v", msgs.Get("build_pools_failed"), err)
 	}

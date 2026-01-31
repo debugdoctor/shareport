@@ -109,15 +109,15 @@ Release 说明会在你发布 tag release 时通过 Release Drafter 自动生成
   "pools": [
     {
       "name": "pool1",
-	      "policy": "round_robin",
-	      "links": [
-	        "vless://..."
-	        "vmess://..."
-	        "trojan://..."
-	      ]
-	    }
-	  ]
-	}
+      "policy": "round_robin",
+      "links": [
+        "vless://...",
+        "vmess://...",
+        "trojan://..."
+      ]
+    }
+  ]
+}
 ```
 
 ### 支持的策略
@@ -152,7 +152,7 @@ Release 说明会在你发布 tag release 时通过 Release Drafter 自动生成
 | 关闭 | 默认使用 node-1（不切换） |
 | 时间间隔（固定） | 以固定时间间隔切换（10-1800 秒） |
 | 时间间隔（随机） | 在随机时间范围内切换 |
-| 每次连接 | 每次新连接时触发切换 |
+| 每次连接 | 每次新连接时触发切换（基于代理访问日志） |
 
 ## 证书管理
 
@@ -174,13 +174,10 @@ Shareport 支持通过 ACME 自动签发证书：
 ```
 shareport/
 ├── main.go              # 程序入口和 CLI 参数解析
-├── acme/                # ACME 证书管理
 ├── cli/                 # TUI 界面和向导
+├── components/          # ACME、链接解析、池逻辑、元数据
 ├── config/              # 配置和数据库处理
 ├── i18n/                # 国际化
-├── lb/                  # 负载均衡池逻辑
-├── links/               # 链接解析（vless/vmess/trojan）
-├── meta/                # 元数据存储
 ├── runtime/             # 运行时进程管理
 ├── ui/                  # TUI 工具
 └── core/                # 代理配置生成

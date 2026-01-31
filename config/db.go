@@ -20,20 +20,7 @@ func OpenDB(path string) (*sql.DB, error) {
 }
 
 func EnsureSchema(db *sql.DB) error {
-	stmts := []string{
-		`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
-		// Runtime state is intentionally separate from "settings" because SaveDB
-		// clears settings as part of config rewrite.
-		`CREATE TABLE IF NOT EXISTS runtime_state (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
-		`CREATE TABLE IF NOT EXISTS pools (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, policy TEXT NOT NULL);`,
-		`CREATE TABLE IF NOT EXISTS links (id INTEGER PRIMARY KEY AUTOINCREMENT, pool_id INTEGER NOT NULL, link TEXT NOT NULL, position INTEGER NOT NULL, FOREIGN KEY(pool_id) REFERENCES pools(id));`,
-	}
-	for _, stmt := range stmts {
-		if _, err := db.Exec(stmt); err != nil {
-			return err
-		}
-	}
-	return nil
+	return ApplyMigrations(db)
 }
 
 func LoadDB(db *sql.DB) (Config, error) {

@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"aimerick.com/shareport/acme"
+	"aimerick.com/shareport/components"
 	"aimerick.com/shareport/config"
 	"aimerick.com/shareport/i18n"
-	"aimerick.com/shareport/links"
 	"aimerick.com/shareport/runtime"
 	"aimerick.com/shareport/ui"
 )
@@ -71,7 +70,7 @@ func ManageConfig(term *ui.TUI, msgs i18n.Messages, cfg config.Config, dbPath, x
 			}
 			term.WaitEnter(msgs.Get("press_enter_return"))
 		case 6:
-			if err := acme.RenewCertificates(term, msgs); err != nil {
+			if err := components.RenewCertificates(term, msgs); err != nil {
 				return err
 			}
 			term.WaitEnter(msgs.Get("press_enter_return"))
@@ -270,7 +269,7 @@ func manageLinks(term *ui.TUI, msgs i18n.Messages, cfg *config.Config, dbPath st
 			continue
 		}
 
-		if _, err := links.Parse(input); err != nil {
+		if _, err := components.Parse(input); err != nil {
 			term.Println(fmt.Sprintf("%s: %v", msgs.Get("invalid_link"), err))
 			term.WaitEnter(msgs.Get("press_enter_continue"))
 			continue

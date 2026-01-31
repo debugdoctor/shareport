@@ -1,4 +1,4 @@
-package lb
+package components
 
 import (
 	"fmt"
@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"aimerick.com/shareport/config"
-	"aimerick.com/shareport/links"
 )
 
 type Pool struct {
@@ -39,7 +38,7 @@ func BuildPools(cfg config.Config) (map[string]*Pool, error) {
 			return nil, fmt.Errorf("pool %s has unsupported policy: %s", p.Name, p.Policy)
 		}
 		for _, link := range p.Links {
-			if _, err := links.Parse(link); err != nil {
+			if _, err := Parse(link); err != nil {
 				return nil, fmt.Errorf("pool %s has invalid link: %v", p.Name, err)
 			}
 		}
